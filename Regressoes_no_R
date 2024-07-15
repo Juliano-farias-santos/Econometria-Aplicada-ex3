@@ -1,0 +1,172 @@
+#utilized packeges
+
+library(plm)
+library(stargazer)
+library(foreign)
+library(tidyverse)
+library(sandwich)
+library(dplyr)
+library(lmtest)
+
+
+#cleannign workspace
+
+rm(list = ls())
+
+#loading data. The function used is to read data from stata layout. The professor made avaliable cleaned data from stata. 
+ex3 <- read.dta("base-resumida_2024.dta", convert.dates = TRUE, convert.factors = TRUE,
+                missing.type = FALSE,
+                convert.underscore = FALSE, warn.missing.labels = TRUE)
+
+
+#Knwoing the dataset
+str(ex3)
+summary(ex3)
+
+#creating variables
+
+ex3 <- ex3 |>
+  mutate(
+    alavacagem = longtermdebt / patrimniolquido,
+    imobilizado = permanentasset / totalasset,
+    roa = netprofit / totalasset,
+    qtobin = firmmarketvalue / totalasset,
+    bep = ebit / totalasset,
+    logSize = log(totalasset)
+  )
+
+
+#the variable yearquarter is needed to elimate the duplicates years in the dataset.
+ex3$yearquarter <- as.yearqtr(paste0(ex3$year,"-",ex3$quarter))
+
+#convert in panel data data.frame
+pex3 <- pdata.frame(ex3)
+
+#estimating pooled OLS 
+#2) Faça uma regressão Pooled OLS usando erros robustos:
+
+#a. Usando apenas as variáveis principais.
+
+reg0 <- plm(alavacagem ~ imobilizado + roa + qtobin + bep + logSize,
+            model = "pooling",
+            index = c("companyname", "yearquarter"),
+            data = ex3)
+summary(reg0)
+coeftest(reg0, vcov = vcovHC, type = "HC1")
+
+stargazer(reg0,coeftest(reg0, vcov = vcovHC, type = "HC1"), type = "text", title="Descriptive statistics", digits=1)
+
+
+#b. Usando apenas as variáveis principais e os dummies de trimestre
+
+reg1 <- plm(alavacagem ~ imobilizado + roa + qtobin + bep + logSize + yearquarter,
+            model = "pooling",
+            index = c("companyname", "yearquarter"),
+            data = ex3)
+
+summary(reg1)
+coeftest(reg1, vcov = vcovHC, type = "HC1")
+stargazer(reg1,coeftest(reg1, vcov = vcovHC, type = "HC1"), type = "text", title="Descriptive statistics", digits=1)
+
+#c. Usando apenas as variáveis principais, dummies de trimestre e dummies de firma.
+
+reg2 <- plm(alavacagem ~ imobilizado + roa + qtobin + bep + logSize + yearquarter + companyname,
+            model = "pooling",
+            index = c("companyname", "yearquarter"),
+            data = ex3)
+
+summary(reg2)
+coeftest(reg2, vcov = vcovHC, type = "HC1")
+
+stargazer(coeftest(reg2, vcov = vcovHC, type = "HC1"), type = "text", title="reg2 dummies por trimestre e firma", digits=1)
+
+#3) Faça uma regressão usando efeitos aleatórios e erros robustos:
+
+#a. Usando apenas as variáveis principais.
+
+reg3 <- plm(alavacagem ~ imobilizado + roa + qtobin + bep + logSize,
+            model = "random",
+            index = c("companyname", "yearquarter"),
+            data = ex3)
+summary(reg3)
+coeftest(reg3, vcov = vcovHC, type = "HC1")
+
+#b. Usando apenas as variáveis principais e os dummies de trimestre
+
+reg4 <- plm(alavacagem ~ imobilizado + roa + qtobin + bep + logSize + yearquarter,
+            model = "random",
+            index = c("companyname", "yearquarter"),
+            data = ex3)
+stargazer(coeftest(reg4, vcov = vcovHC, type = "HC1"), type = "text", title="reg2 dummies por trimestre e firma", digits=1)
+
+
+#c. Usando apenas as variáveis principais, dummies de trimestre e dummies de firma.
+
+reg5 <- plm(alavacagem ~ imobilizado + roa + qtobin + bep + logSize + yearquarter + companyname,
+            model = "random",
+            index = c("companyname", "yearquarter"),
+            data = ex3)
+
+summary(reg5)
+coeftest(reg5, vcov = vcovHC, type = "HC1")
+
+#d. Usando apenas as variáveis principais, dummies de trimestre, dummies de firma e cluster por firma.
+
+reg6 <- plm(alavacagem ~ imobilizado + roa + qtobin + bep + logSize + yearquarter + companyname,
+            model = "random",
+            index = c("companyname", "yearquarter"),
+            cluster = "companyname",
+            data = ex3)
+
+summary(reg6)
+coeftest(reg6, vcov = vcovHC, type = "HC1")
+
+#################################################
+#4) Faça regressões usando efeitos fixos e erros robustos::
+
+#a. Usando apenas as variáveis principais.
+
+reg7 <- plm(alavacagem ~ imobilizado + roa + qtobin + bep + logSize,
+            model = "within",
+            index = c("companyname", "yearquarter"),
+            data = ex3)
+summary(reg3)
+coeftest(reg3, vcov = vcovHC, type = "HC1")
+
+#b. Usando apenas as variáveis principais e os dummies de trimestre
+
+reg8 <- plm(alavacagem ~ imobilizado + roa + qtobin + bep + logSize + yearquarter,
+            model = "within",
+            index = c("companyname", "yearquarter"),
+            data = ex3)
+
+summary(reg4)
+coeftest(reg4, vcov = vcovHC, type = "HC1")
+
+
+
+#c. Usando apenas as variáveis principais, dummies de trimestre e dummies de firma.
+
+reg9 <- plm(alavacagem ~ imobilizado + roa + qtobin + bep + logSize + yearquarter + companyname,
+            model = "within",
+            index = c("companyname", "yearquarter"),
+            data = ex3)
+
+summary(reg9)
+coeftest(reg9, vcov = vcovHC, type = "HC1")
+
+#d. Usando apenas as variáveis principais, dummies de trimestre, dummies de firma e cluster por firma.
+
+reg10 <- plm(alavacagem ~ imobilizado + roa + qtobin + bep + logSize + yearquarter + companyname,
+            model = "within",
+            index = c("companyname", "yearquarter"),
+            cluster = "companyname",
+            data = ex3)
+
+summary(reg10)
+coeftest(reg10, vcov = vcovHC, type = "HC1")
+
+#5) Execute um teste de Hausman para os modelos RE e FE usando o modelo da letra (a) e conclua qual seria a técnica indicada neste caso
+
+phtest(reg4, reg7)
+
